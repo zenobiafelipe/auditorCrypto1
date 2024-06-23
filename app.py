@@ -18,11 +18,12 @@ def login():
     username = entry_username.get()
     password = entry_password.get()
     if check_credentials(username, password):
+        messagebox.showinfo("Éxito", "Login exitoso.")
         root.destroy()
         from gui import create_interface
         create_interface()
     else:
-        messagebox.showerror("Login Failed", "Invalid username or password")
+        messagebox.showerror("Login Failed", "Nombre de usuario o contraseña incorrectos")
 
 # Crear la ventana de login
 root = tk.Tk()

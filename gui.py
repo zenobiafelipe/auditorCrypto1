@@ -4,10 +4,12 @@ from decrypt import decrypt_file
 from secret_key import generate_secret_key
 from verify_signature import verify_signature
 import webbrowser
+import tkinter.messagebox as messagebox
 
 def open_cloud_link():
     url = "https://drive.google.com/drive/folders/1yJMHspBXMBjG61aX0QHtrQ4lzLe59SKa?usp=sharing"
     webbrowser.open(url)
+    messagebox.showinfo("Nube", "Se ha abierto el enlace de la nube en el navegador.")
 
 def create_interface():
     root = tk.Tk()
