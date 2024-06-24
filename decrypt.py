@@ -3,16 +3,16 @@ from cryptography.hazmat.primitives import padding
 import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
-import base64
+import PyPDF2
 
 def decrypt_file():
     try:
-        # Seleccionar el documento cifrado (PDF)
-        encrypted_document = filedialog.askopenfilename(title="Selecciona el documento cifrado (PDF)", filetypes=(("PDF files", "*.pdf"),))
-        if not encrypted_document:
+        # Seleccionar el documento cifrado (.pdf)
+        encrypted_document_path = filedialog.askopenfilename(title="Selecciona el documento cifrado", filetypes=(("PDF files", "*.pdf"),))
+        if not encrypted_document_path:
             messagebox.showinfo("Cancelado", "Operación cancelada. No se seleccionó ningún documento.")
             return
-        
+
         # Seleccionar la clave secreta
         secret_key_file = filedialog.askopenfilename(title="Selecciona la clave secreta derivada", filetypes=(("BIN files", "*.bin"),))
         if not secret_key_file:
@@ -24,43 +24,40 @@ def decrypt_file():
             secret_key = key_file.read()
         print("Clave secreta cargada correctamente.")
 
-        # Leer el contenido del documento cifrado (PDF)
-        with open(encrypted_document, 'rb') as file:
-            file.seek(0, os.SEEK_END)
-            file_size = file.tell()
-            file.seek(0)
-            encrypted_data_b64 = file.read(file_size - 16).decode('utf-8')
-
-        # Decodificar el texto base64
-        encrypted_data = base64.b64decode(encrypted_data_b64)
-
-        # Separar el IV del texto cifrado
-        iv = encrypted_data[:16]
-        encrypted_data = encrypted_data[16:]
+        # Leer el contenido del archivo cifrado
+        with open(encrypted_document_path, 'rb') as file:
+            iv = file.read(16)  # Leer el IV (primeros 16 bytes)
+            encrypted_data = file.read()  # Leer el texto cifrado restante
 
         # Crear un objeto Cipher para AES en modo CBC
         cipher = Cipher(algorithms.AES(secret_key), modes.CBC(iv))
         decryptor = cipher.decryptor()
 
-        # Descifrar el documento
+        # Descifrar los datos
         padded_data = decryptor.update(encrypted_data) + decryptor.finalize()
 
-        # Quitar padding
+        # Quitar el padding del documento
         unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
         document_data = unpadder.update(padded_data) + unpadder.finalize()
 
-        # Guardar el documento descifrado
-        decrypted_document_path = os.path.join("Documentos_Descifrados", os.path.basename(encrypted_document).replace("encrypted_", ""))
+        # Guardar el documento descifrado temporalmente
+        decrypted_document_path = os.path.join("Documentos_Descifrados", os.path.basename(encrypted_document_path).replace(".pdf.enc", ".pdf"))
         os.makedirs("Documentos_Descifrados", exist_ok=True)
         with open(decrypted_document_path, 'wb') as file:
             file.write(document_data)
 
-        messagebox.showinfo("Éxito", f"Documento descifrado guardado en '{decrypted_document_path}'")
+        # Leer y mostrar el contenido del documento PDF descifrado
+        with open(decrypted_document_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfFileReader(file)
+            for page_num in range(pdf_reader.numPages):
+                page = pdf_reader.getPage(page_num)
+                print(page.extract_text())
+
+        messagebox.showinfo("Éxito", f"Documento descifrado y guardado en '{decrypted_document_path}'")
     except Exception as e:
         messagebox.showerror("Error", f"Hubo un problema al descifrar el documento: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
     root.withdraw()
-    decrypt_document()
-
+    decrypt_file()

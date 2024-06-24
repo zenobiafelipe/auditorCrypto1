@@ -31,9 +31,6 @@ def open_new_interface():
     new_interface = tk.Tk()
     new_interface.title("Nueva Interfaz")
 
-    # Contenido de la nueva interfaz
-    # Puedes agregar tus widgets aquí
-
     new_interface.mainloop()
 
 # Crear la ventana de login
