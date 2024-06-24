@@ -1,51 +1,66 @@
-from cryptography.hazmat.primitives.serialization import load_pem_private_key
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
+import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
+import base64
 
 def decrypt_file():
     try:
-        private_key_file = filedialog.askopenfilename(title="Selecciona la clave privada DH", filetypes=(("PEM files", "*.pem"),))
-        if not private_key_file:
-            messagebox.showinfo("Cancelado", "Operación cancelada. No se seleccionó ninguna clave privada.")
+        # Seleccionar el documento cifrado (PDF)
+        encrypted_document = filedialog.askopenfilename(title="Selecciona el documento cifrado (PDF)", filetypes=(("PDF files", "*.pdf"),))
+        if not encrypted_document:
+            messagebox.showinfo("Cancelado", "Operación cancelada. No se seleccionó ningún documento.")
             return
         
-        encrypted_file = filedialog.askopenfilename(title="Selecciona el archivo cifrado")
-        if not encrypted_file:
-            messagebox.showinfo("Cancelado", "Operación cancelada. No se seleccionó ningún archivo cifrado.")
+        # Seleccionar la clave secreta
+        secret_key_file = filedialog.askopenfilename(title="Selecciona la clave secreta derivada", filetypes=(("BIN files", "*.bin"),))
+        if not secret_key_file:
+            messagebox.showinfo("Cancelado", "Operación cancelada. No se seleccionó ninguna clave secreta.")
             return
 
-        with open(private_key_file, 'rb') as key_file:
-            private_key = load_pem_private_key(key_file.read(), password=None)
+        # Cargar la clave secreta
+        with open(secret_key_file, 'rb') as key_file:
+            secret_key = key_file.read()
+        print("Clave secreta cargada correctamente.")
 
-        with open(encrypted_file, 'rb') as enc_file:
-            encrypted_data = enc_file.read()
+        # Leer el contenido del documento cifrado (PDF)
+        with open(encrypted_document, 'rb') as file:
+            file.seek(0, os.SEEK_END)
+            file_size = file.tell()
+            file.seek(0)
+            encrypted_data_b64 = file.read(file_size - 16).decode('utf-8')
 
-        shared_key = private_key.exchange(encrypted_data[:128])
-        derived_key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'handshake data').derive(shared_key)
+        # Decodificar el texto base64
+        encrypted_data = base64.b64decode(encrypted_data_b64)
 
-        iv = encrypted_data[128:144]
-        ciphertext = encrypted_data[144:]
+        # Separar el IV del texto cifrado
+        iv = encrypted_data[:16]
+        encrypted_data = encrypted_data[16:]
 
-        cipher = Cipher(algorithms.AES(derived_key), modes.CFB(iv))
+        # Crear un objeto Cipher para AES en modo CBC
+        cipher = Cipher(algorithms.AES(secret_key), modes.CBC(iv))
         decryptor = cipher.decryptor()
-        decrypted_data = decryptor.update(ciphertext) + decryptor.finalize()
 
-        output_file = filedialog.asksaveasfilename(title="Guardar archivo descifrado como")
-        if not output_file:
-            messagebox.showinfo("Cancelado", "Operación cancelada. No se seleccionó una ubicación para guardar el archivo descifrado.")
-            return
+        # Descifrar el documento
+        padded_data = decryptor.update(encrypted_data) + decryptor.finalize()
 
-        with open(output_file, 'wb') as file:
-            file.write(decrypted_data)
+        # Quitar padding
+        unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+        document_data = unpadder.update(padded_data) + unpadder.finalize()
 
-        messagebox.showinfo("Éxito", f"Archivo descifrado y guardado como: {output_file}")
+        # Guardar el documento descifrado
+        decrypted_document_path = os.path.join("Documentos_Descifrados", os.path.basename(encrypted_document).replace("encrypted_", ""))
+        os.makedirs("Documentos_Descifrados", exist_ok=True)
+        with open(decrypted_document_path, 'wb') as file:
+            file.write(document_data)
+
+        messagebox.showinfo("Éxito", f"Documento descifrado guardado en '{decrypted_document_path}'")
     except Exception as e:
-        messagebox.showerror("Error", f"Hubo un problema al descifrar el archivo: {e}")
+        messagebox.showerror("Error", f"Hubo un problema al descifrar el documento: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
     root.withdraw()
-    decrypt_file()
+    decrypt_document()
+
