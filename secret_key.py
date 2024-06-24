@@ -16,15 +16,26 @@ def generate_secret_key():
             messagebox.showinfo("Cancelado", "Operación cancelada. No se seleccionó ninguna clave pública.")
             return
 
+        # Cargar la clave privada del auditor
         with open(private_key_file, 'rb') as key_file:
-            private_key = load_pem_private_key(key_file.read(), password=None)
+            private_key_bytes = key_file.read()
+            private_key = load_pem_private_key(private_key_bytes, password=None)
 
+        # Cargar la clave pública del administrador
         with open(admin_public_key_file, 'rb') as key_file:
-            admin_public_key = load_pem_public_key(key_file.read())
+            admin_public_key_bytes = key_file.read()
+            admin_public_key = load_pem_public_key(admin_public_key_bytes)
 
+        # Generar la clave compartida
         shared_key = private_key.exchange(admin_public_key)
-        derived_key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'handshake data').derive(shared_key)
+        derived_key = HKDF(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=None,
+            info=b'handshake data'
+        ).derive(shared_key)
 
+        # Guardar la clave derivada en un archivo
         with open("derived_secret_key.bin", 'wb') as key_file:
             key_file.write(derived_key)
 
