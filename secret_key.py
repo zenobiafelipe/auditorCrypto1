@@ -36,10 +36,10 @@ def generate_secret_key():
         ).derive(shared_key)
 
         # Guardar la clave derivada en un archivo
-        with open("derived_secret_key.bin", 'wb') as key_file:
+        with open("derived_secret_key.pem", 'wb') as key_file:
             key_file.write(derived_key)
 
-        messagebox.showinfo("Éxito", "Clave secreta derivada guardada en 'derived_secret_key.bin'")
+        messagebox.showinfo("Éxito", "Clave secreta derivada guardada en 'derived_secret_key.pem'")
     except Exception as e:
         messagebox.showerror("Error", f"Hubo un problema al generar la clave secreta: {e}")
 
